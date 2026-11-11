@@ -295,7 +295,7 @@ function makeFrontTexture() {
         text: `CEA - CENTRO DE
   ESTUDIOS
   AERONAUTICOS.
-  TGTA.`,
+  TGTA III.`,
       },
     ],
     1480, 
