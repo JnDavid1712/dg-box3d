@@ -1,5 +1,5 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { ContactShadows, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import './App.css'
@@ -7,6 +7,8 @@ import './App.css'
 const BOX = { width: 4.8, height: 3, depth: 2.8 }
 const LABEL_WIDTH = 3072
 const LABEL_HEIGHT = 2048
+const SHEET = { width: 2.25, height: 3.02, top: BOX.height / 2 + 0.025 }
+const SHEET_TOP_SCALE = 0.78
 
 function makeCanvas(width = LABEL_WIDTH, height = LABEL_HEIGHT) {
   const canvas = document.createElement('canvas')
@@ -542,7 +544,92 @@ function Carton({ xray }: CartonProps) {
   )
 }
 
-function Scene({ xray }: CartonProps) {
+type ProductSheetProps = {
+  open: boolean
+  flipped: boolean
+  onOpen: () => void
+  onFlip: () => void
+}
+
+function ProductSheet({ open, flipped, onOpen, onFlip }: ProductSheetProps) {
+  const group = useRef<THREE.Group>(null)
+  const camera = useThree((state) => state.camera)
+  const [frontTexture, backTexture] = useLoader(THREE.TextureLoader, [
+    '/assets/ficha-tecnica-pagina-1.png',
+    '/assets/ficha-tecnica-pagina-2.png',
+  ])
+  const frontPrint = useMemo(() => {
+    const texture = frontTexture.clone()
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.anisotropy = 8
+    return texture
+  }, [frontTexture])
+  const backPrint = useMemo(() => {
+    const texture = backTexture.clone()
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.anisotropy = 8
+    return texture
+  }, [backTexture])
+  const materials = useMemo(() => {
+    return [
+      new THREE.MeshStandardMaterial({ color: '#f3f1e9', roughness: 0.82 }),
+      new THREE.MeshStandardMaterial({ color: '#f3f1e9', roughness: 0.82 }),
+      new THREE.MeshStandardMaterial({ color: '#f3f1e9', roughness: 0.82 }),
+      new THREE.MeshStandardMaterial({ color: '#f3f1e9', roughness: 0.82 }),
+      new THREE.MeshBasicMaterial({ map: frontPrint, toneMapped: false }),
+      new THREE.MeshBasicMaterial({ map: backPrint, toneMapped: false }),
+    ]
+  }, [backPrint, frontPrint])
+  const targetObject = useMemo(() => new THREE.Object3D(), [])
+  const flipRotation = useMemo(
+    () => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI),
+    [],
+  )
+
+  useFrame((_, delta) => {
+    if (!group.current) return
+
+    if (open) {
+      targetObject.position.copy(camera.position).normalize().multiplyScalar(5.2)
+      targetObject.lookAt(camera.position)
+    } else {
+      targetObject.position.set(0, SHEET.top, 0)
+      targetObject.rotation.set(-Math.PI / 2, 0, 0)
+    }
+
+    const targetRotation = targetObject.quaternion.clone()
+    if (flipped) targetRotation.multiply(flipRotation)
+    const easing = 1 - Math.exp(-5 * delta)
+    group.current.position.lerp(targetObject.position, easing)
+    group.current.quaternion.slerp(targetRotation, easing)
+    const targetScale = open ? 1 : SHEET_TOP_SCALE
+    group.current.scale.setScalar(THREE.MathUtils.damp(group.current.scale.x, targetScale, 5, delta))
+  })
+
+  return (
+    <group
+      ref={group}
+      position={[0, SHEET.top, 0]}
+      rotation={[-Math.PI / 2, 0, 0]}
+      scale={SHEET_TOP_SCALE}
+      onClick={(event) => {
+        event.stopPropagation()
+        if (open) onFlip()
+        else onOpen()
+      }}
+      onPointerOver={() => { document.body.style.cursor = 'pointer' }}
+      onPointerOut={() => { document.body.style.cursor = 'auto' }}
+    >
+      <mesh castShadow receiveShadow material={materials}>
+        <boxGeometry args={[SHEET.width, SHEET.height, 0.035]} />
+      </mesh>
+    </group>
+  )
+}
+
+type SceneProps = CartonProps & ProductSheetProps
+
+function Scene({ xray, open, flipped, onOpen, onFlip }: SceneProps) {
   return (
     <>
       <color attach="background" args={['#080d16']} />
@@ -552,9 +639,11 @@ function Scene({ xray }: CartonProps) {
       <directionalLight position={[-5, 3, -4]} intensity={1.7} color="#9ab8e8" />
       <spotLight position={[0, 6, 1]} angle={0.7} penumbra={0.8} intensity={1.5} />
       <Carton xray={xray} />
+      <ProductSheet open={open} flipped={flipped} onOpen={onOpen} onFlip={onFlip} />
       <ContactShadows position={[0, -1.53, 0]} opacity={0.45} scale={11} blur={2.5} far={4} />
       <OrbitControls
         makeDefault
+        enabled={!open}
         enableDamping
         dampingFactor={0.05}
         minDistance={4.2}
@@ -569,6 +658,22 @@ function Scene({ xray }: CartonProps) {
 
 function App() {
   const [xray, setXray] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [sheetFlipped, setSheetFlipped] = useState(false)
+
+  useEffect(() => {
+    if (!sheetOpen) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSheetOpen(false)
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        setSheetFlipped((value) => !value)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [sheetOpen])
+
+  const flipSheet = () => setSheetFlipped((value) => !value)
 
   return (
     <main className="app-shell">
@@ -578,7 +683,13 @@ function App() {
         camera={{ position: [6.8, 4.7, 7.6], fov: 34, near: 0.1, far: 100 }}
         gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
       >
-        <Scene xray={xray} />
+        <Scene
+          xray={xray}
+          open={sheetOpen}
+          flipped={sheetFlipped}
+          onOpen={() => setSheetOpen(true)}
+          onFlip={flipSheet}
+        />
       </Canvas>
 
       <aside className="info-panel">
@@ -599,6 +710,11 @@ function App() {
           {xray ? 'Desactivar modo rayos X' : 'Activar modo rayos X'}
           <span className="button-arrow" aria-hidden="true">↗</span>
         </button>
+        <button className="sheet-open-button" type="button" onClick={() => setSheetOpen(true)}>
+          <span aria-hidden="true">▤</span>
+          Abrir ficha técnica
+          <span className="button-arrow" aria-hidden="true">↗</span>
+        </button>
         <div className="panel-footer">
           <span className={`status-dot${xray ? ' status-xray' : ''}`} />
           {xray ? 'Interior visible · recipiente metálico' : 'Vista exterior · cartón kraft'}
@@ -613,10 +729,26 @@ function App() {
         </div>
       </div>
 
-      <div className="interaction-hint">
+      <div className={`interaction-hint${sheetOpen ? ' is-sheet-open' : ''}`}>
         <span className="hint-mouse" aria-hidden="true"><i /></span>
-        <span>Arrastra para girar <b>·</b> Rueda para acercar</span>
+        <span>{sheetOpen ? 'Usa “Voltear ficha” para ver el reverso' : 'Arrastra para girar · Rueda para acercar'}</span>
       </div>
+
+      {sheetOpen && (
+        <div className="sheet-controls" role="group" aria-label="Controles de ficha técnica">
+          <div className="sheet-page-label">
+            <span>FICHA TÉCNICA</span>
+            <strong>{sheetFlipped ? 'Página 2 de 2' : 'Página 1 de 2'}</strong>
+          </div>
+          <button type="button" className="sheet-flip-button" onClick={flipSheet}>
+            <span aria-hidden="true">↻</span>
+            Voltear ficha
+          </button>
+          <button type="button" className="sheet-close-button" onClick={() => setSheetOpen(false)} aria-label="Cerrar ficha técnica">
+            Cerrar <span aria-hidden="true">×</span>
+          </button>
+        </div>
+      )}
 
       <div className="corner-label" aria-hidden="true">
         <span>DG</span>

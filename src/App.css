@@ -155,6 +155,37 @@
   box-shadow: 0 5px 18px rgba(46, 135, 195, 0.2);
 }
 
+.sheet-open-button {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  gap: 9px;
+  margin-top: 9px;
+  padding: 0 13px;
+  border: 1px solid rgba(151, 169, 195, 0.2);
+  border-radius: 7px;
+  color: #e2e8f1;
+  background: rgba(89, 107, 134, 0.2);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+
+.sheet-open-button:hover {
+  border-color: rgba(255, 194, 75, 0.55);
+  background: rgba(89, 107, 134, 0.35);
+}
+
+.sheet-open-button:focus-visible,
+.sheet-flip-button:focus-visible,
+.sheet-close-button:focus-visible {
+  outline: 2px solid #ffc14c;
+  outline-offset: 3px;
+}
+
 .button-icon {
   font-size: 15px;
 }
@@ -232,6 +263,7 @@
 
 .interaction-hint {
   position: absolute;
+  z-index: 2;
   right: 42px;
   bottom: 35px;
   display: flex;
@@ -239,6 +271,10 @@
   gap: 10px;
   color: #728096;
   font-size: 10px;
+}
+
+.interaction-hint.is-sheet-open {
+  display: none;
 }
 
 .hint-mouse {
@@ -276,6 +312,80 @@
   width: 24px;
   height: 1px;
   background: #4a5668;
+}
+
+.sheet-controls {
+  position: absolute;
+  z-index: 4;
+  bottom: 25px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid rgba(157, 176, 204, 0.25);
+  border-radius: 11px;
+  background: rgba(15, 23, 36, 0.94);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(16px);
+  transform: translateX(-50%);
+}
+
+.sheet-page-label {
+  display: grid;
+  gap: 4px;
+  min-width: 100px;
+}
+
+.sheet-page-label span {
+  color: #8794a8;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.sheet-page-label strong {
+  color: #f0f3f8;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.sheet-flip-button,
+.sheet-close-button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 7px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sheet-flip-button {
+  padding: 0 13px;
+  border: 1px solid rgba(255, 194, 75, 0.64);
+  color: #211a0d;
+  background: linear-gradient(100deg, #ffc045, #f3a623);
+}
+
+.sheet-flip-button span {
+  font-size: 16px;
+}
+
+.sheet-close-button {
+  padding: 0 9px;
+  border: 1px solid rgba(151, 169, 195, 0.2);
+  color: #cbd4e0;
+  background: rgba(89, 107, 134, 0.18);
+}
+
+.sheet-close-button span {
+  font-size: 18px;
+  font-weight: 400;
 }
 
 @media (max-width: 700px) {
@@ -321,6 +431,12 @@
     font-size: 10px;
   }
 
+  .sheet-open-button {
+    min-height: 36px;
+    margin-top: 7px;
+    font-size: 10px;
+  }
+
   .panel-footer {
     margin-top: 11px;
     padding-top: 10px;
@@ -338,6 +454,42 @@
     right: 18px;
     bottom: 22px;
     font-size: 9px;
+  }
+
+  .sheet-controls {
+    bottom: 14px;
+    width: calc(100vw - 24px);
+    justify-content: space-between;
+    gap: 7px;
+    padding: 9px 10px;
+  }
+
+  .sheet-page-label {
+    min-width: 0;
+  }
+
+  .sheet-page-label span {
+    font-size: 7px;
+  }
+
+  .sheet-page-label strong {
+    font-size: 10px;
+  }
+
+  .sheet-flip-button,
+  .sheet-close-button {
+    min-height: 36px;
+    font-size: 10px;
+  }
+
+  .sheet-flip-button {
+    gap: 4px;
+    padding: 0 9px;
+  }
+
+  .sheet-close-button {
+    gap: 4px;
+    padding: 0 7px;
   }
 
   .corner-label {
